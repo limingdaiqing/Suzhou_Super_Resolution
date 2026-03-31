@@ -1,14 +1,24 @@
-# Suzhou Super Resolution
+# Real-ESRGAN CPU API
 
-基于 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) 的图像超分辨率 API 服务。
+> Real-ESRGAN 的 CPU 兼容修复版 + RESTful API 服务
 
-将 Real-ESRGAN 封装为 RESTful 接口，支持 **CPU / GPU 自动切换**，可通过 HTTP 调用实现图片超分放大，适用于需要集成超分能力的业务系统。
+基于 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) 官方项目，修复了 CPU 模式下的兼容性问题，并提供开箱即用的 HTTP API 接口。
 
-## 解决什么问题
+## 官方项目的兼容性问题
 
-- **无 GPU 也能跑**：支持纯 CPU 推理，无需 CUDA 环境，普通服务器即可部署
-- **接口化调用**：无需命令行操作，业务系统通过 HTTP POST 即可完成超分
-- **灵活参数**：支持自定义放大倍数、分块大小、输出格式等
+官方 Real-ESRGAN 项目的推理脚本 `inference_realesrgan.py` 存在以下兼容性缺陷：
+
+1. **旧版本库不支持**：官方脚本依赖较新版本的 `basicsr`、`realesrgan` 库，在旧环境中会抛出 `TypeError`（如 `fp32`、`alpha_upsampler`、`denoise_strength` 等参数不兼容）
+2. **图片加载 Bug**：直接传递文件路径字符串给 `upsampler.enhance()` 会导致 `'str' object has no attribute 'shape'` 错误
+3. **缺少专用 CPU 脚本**：官方没有提供独立的 CPU 推理脚本，用户需要手动修改代码才能在无 GPU 环境运行
+
+## 本项目的改进
+
+1. **修复 CPU 兼容性**：提供 `inference_realesrgan_cpu.py`，移除不兼容参数，强制使用 CPU 设备，解决旧版本库的 TypeError 问题
+2. **修复图片加载**：使用 `cv2.imread()` 手动加载图片后再传递给 `enhance()`，避免 `shape` 属性错误
+3. **扩展图片格式支持**：增加 `.tiff`、`.jfif`、`.gif` 等格式的支持
+4. **API 服务化**：通过 FastAPI 提供 HTTP 接口，支持 CPU/GPU 自动检测切换
+5. **更好的内存控制**：默认使用 `tile=128` 分块处理，避免 CPU 模式下 OOM
 
 ## 项目结构
 
@@ -29,8 +39,8 @@ Suzhou_Super_Resolution/
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/limingdaiqing/Suzhou_Super_Resolution.git
-cd Suzhou_Super_Resolution
+git clone https://github.com/limingdaiqing/real-esrgan-cpu-api.git
+cd real-esrgan-cpu-api
 ```
 
 ### 2. 下载模型权重
